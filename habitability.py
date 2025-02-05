@@ -3,16 +3,20 @@
 Habitability calculation
 
 Separate scores are calculated for each factor, and then combined
+
+0 is a perfect score, as the score measures how far the data strays from the ideal values
 """
 
+import json
 import numpy as np
 import helper_functions as hf
 from area_mapping import get_water_mask, get_tree_mask
 
+CONFIG = json.load(open("habitability_config.json", "r"))
 # Perfect ratio of water
-GOLDEN_WATER_RATIO = 0.1
+GOLDEN_WATER_RATIO = CONFIG["golden_water_ratio"]
 # Perfect ratio of trees
-GOLDEN_TREE_RATIO = 0.5
+GOLDEN_TREE_RATIO = CONFIG["golden_tree_ratio"]
 
 def get_water_score(water_mask: np.ndarray) -> float:
     """
