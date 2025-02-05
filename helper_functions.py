@@ -415,3 +415,25 @@ def subtract_masks(mask_1: np.ndarray, mask_2: np.ndarray) -> np.ndarray:
 
 def paste_debugging(message: str) -> None:
     print(f"{strftime('%H:%M:%S', gmtime())} - {message}")
+
+def mask_percentage_difference(binary_mask, target_percentage):
+    """
+    Calculate the difference between the actual filled percentage of a binary mask
+    and a given target percentage.
+
+    Parameters:
+    binary_mask (numpy.ndarray): A binary mask array with boolean values.
+    target_percentage (float): The target percentage (between 0 and 1) to compare against.
+
+    Returns:
+    float: The difference between the actual filled percentage and the target percentage.
+    """
+    if not 0 <= target_percentage <= 1:
+        raise ValueError("Target percentage must be between 0 and 1.")
+
+    total_elements = binary_mask.size
+    filled_elements = np.count_nonzero(binary_mask)
+    actual_filled_percentage = filled_elements / total_elements
+
+    difference = actual_filled_percentage - target_percentage
+    return difference
