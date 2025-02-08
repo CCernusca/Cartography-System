@@ -10,7 +10,16 @@ import detectree as dtr
 import numpy as np
 import cv2
 
-def generate_tree_mask(img_path: str, expansion_thickness: int = 2, min_area: int = 10, debug: bool = False) -> np.ndarray:
+# Mask caches for optimization
+tree_mask_cache = None
+water_mask_cache = None
+free_mask_cache = None
+coast_mask_cache = None
+inland_mask_cache = None
+forest_edge_mask_cache = None
+water_access_mask_cache = None
+
+def generate_tree_mask(img_path: str, expansion_thickness: int = 2, min_area: int = 10, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a tree mask from an image, containing all areas classified as trees by the tree classifier.
 
@@ -24,12 +33,21 @@ def generate_tree_mask(img_path: str, expansion_thickness: int = 2, min_area: in
         Minimum area of a contour to be considered a tree, by default 10
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
     np.ndarray
         Tree mask as a numpy array
     """
+    global tree_mask_cache
+    if use_cache and tree_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Tree mask generation) Using cached tree mask, this will use potentially outdated data!")
+
+        return tree_mask_cache
+
     if debug:
         hf.paste_debugging("(Tree mask generation) Start dataset load")
 
@@ -49,13 +67,16 @@ def generate_tree_mask(img_path: str, expansion_thickness: int = 2, min_area: in
 
             if expansion_thickness > 0:
                 cv2.drawContours(expanded_mask, [cnt], -1, 1, thickness=expansion_thickness)
+    
+    # Cache tree mask
+    tree_mask_cache = expanded_mask
 
     if debug:
         hf.paste_debugging("(Tree mask generation) Tree mask generated")
 
     return expanded_mask
 
-def generate_water_mask(img: cv2.typing.MatLike, lower_water_color: np.ndarray[int] = np.array([90, 50, 50]), upper_water_color: np.ndarray[int] = np.array([140, 255, 255]), min_area_threshold: int = 500, water_kernel_size: int = 12, radius: float = 3, debug: bool = False) -> np.ndarray:
+def generate_water_mask(img: cv2.typing.MatLike, lower_water_color: np.ndarray[int] = np.array([90, 50, 50]), upper_water_color: np.ndarray[int] = np.array([140, 255, 255]), min_area_threshold: int = 500, water_kernel_size: int = 12, radius: float = 3, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a water mask from an image, containing all areas classified as water by color detection and gabor filter.
 
@@ -75,12 +96,21 @@ def generate_water_mask(img: cv2.typing.MatLike, lower_water_color: np.ndarray[i
         Radius of the expansion of the water mask, by default 3
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
     np.ndarray
         Water mask as a numpy array
     """
+    global water_mask_cache
+    if use_cache and water_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Water mask generation) Using cached water mask, this will use potentially outdated data!")
+
+        return water_mask_cache
+
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
     mask_water = cv2.inRange(hsv, lower_water_color, upper_water_color)
@@ -115,12 +145,15 @@ def generate_water_mask(img: cv2.typing.MatLike, lower_water_color: np.ndarray[i
     # Resize mask to original size
     water_mask = cv2.resize(water_mask, tuple(reversed(filtered_water_mask.shape)), interpolation=cv2.INTER_NEAREST)
 
+    # Cache water mask
+    water_mask_cache = water_mask
+
     if debug:
         hf.paste_debugging("(Water mask generation) Water mask generated")
 
     return water_mask
 
-def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: bool = False) -> np.ndarray:
+def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a free mask from tree and water masks, containing all areas that are neither trees nor water.
 
@@ -132,6 +165,8 @@ def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: boo
         Water mask as a numpy array
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
@@ -142,6 +177,13 @@ def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: boo
         raise ValueError("Tree mask must be binary.")
     if not hf.check_binary(water_mask):
         raise ValueError("Water mask must be binary.")
+    
+    global free_mask_cache
+    if use_cache and free_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Free mask generation) Using cached free mask, this will use potentially outdated data!")
+
+        return free_mask_cache
 
     # Combine tree and water masks to find free areas
     combined_mask = np.logical_or(tree_mask > 0, water_mask > 0).astype(np.uint8)
@@ -149,12 +191,15 @@ def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: boo
     # Inverted mask to get free areas
     free_mask = (combined_mask == 0).astype(np.uint8)
 
+    # Cache free mask
+    free_mask_cache = free_mask
+
     if debug:
         hf.paste_debugging("(Free mask generation) Free mask generated")
 
     return free_mask
 
-def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_size: int = 1000, coast_range: int = 100, debug: bool = False) -> np.ndarray:
+def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_size: int = 1000, coast_range: int = 100, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a coast mask from a free mask and a water mask, containing free areas in range of water.
 
@@ -170,6 +215,8 @@ def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_
         Range in pixels to consider as coastline. Defaults to 100.
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
@@ -180,6 +227,13 @@ def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_
         raise ValueError("Zero mask must be binary.")
     if not hf.check_binary(water_mask):
         raise ValueError("Water mask must be binary.")
+    
+    global coast_mask_cache
+    if use_cache and coast_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Coast mask generation) Using cached coast mask, this will use potentially outdated data!")
+
+        return coast_mask_cache
 
     # Find areas in range of large enough water sources (water bodies / water surfaces)
     coast_mask = hf.mask_range(water_mask, blob_min_size=blob_min_size, range_size=coast_range)
@@ -187,12 +241,15 @@ def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_
     # Combine with free areas to get free areas near water
     coast_mask = np.logical_and(zero_mask > 0, coast_mask > 0).astype(np.uint8)
 
+    # Cache coast mask
+    coast_mask_cache = coast_mask
+
     if debug:
         hf.paste_debugging("(Coast mask generation) Coast mask generated")
     
     return coast_mask
 
-def generate_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray, debug: bool = False) -> np.ndarray:
+def generate_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate an inland mask from a free mask and a coast mask, containing free areas not in range of water.
 
@@ -204,6 +261,8 @@ def generate_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray, debug: b
         Coast mask as a numpy array
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
@@ -214,16 +273,26 @@ def generate_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray, debug: b
         raise ValueError("Zero mask must be binary.")
     if not hf.check_binary(coast_mask):
         raise ValueError("Coast mask must be binary.")
+    
+    global inland_mask_cache
+    if use_cache and inland_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Inland mask generation) Using cached inland mask, this will use potentially outdated data!")
+
+        return inland_mask_cache
 
     # Take all free areas which are not near water
     inland_mask = cv2.bitwise_and(zero_mask, cv2.bitwise_not(coast_mask))
+
+    # Cache inland mask
+    inland_mask_cache = inland_mask
 
     if debug:
         hf.paste_debugging("(Inland mask generation) Inland mask generated")
     
     return inland_mask
 
-def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob_min_size: int = 500, range_size: int = 50, debug: bool = False) -> np.ndarray:
+def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob_min_size: int = 500, range_size: int = 50, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a forest edge mask from tree and zero masks, highlighting areas near tree surfaces.
 
@@ -239,6 +308,8 @@ def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob
         Range in pixels to consider as the forest edge. Defaults to 50.
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
@@ -249,6 +320,13 @@ def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob
         raise ValueError("Tree mask must be binary.")
     if not hf.check_binary(zero_mask):
         raise ValueError("Zero mask must be binary.")
+    
+    global forest_edge_mask_cache
+    if use_cache and forest_edge_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Forest edge mask generation) Using cached forest edge mask, this will use potentially outdated data!")
+
+        return forest_edge_mask_cache
 
     # Find areas in range of large enough tree surfaces
     tree_range_mask = hf.mask_range(tree_mask, blob_min_size=blob_min_size, range_size=range_size)
@@ -256,12 +334,15 @@ def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob
     # Combine with free areas to get free areas near trees
     forest_edge_mask = np.logical_and(tree_range_mask, zero_mask).astype(np.uint8)
 
+    # Cache forest edge mask
+    forest_edge_mask_cache = forest_edge_mask
+
     if debug:
         hf.paste_debugging("(Forest edge mask generation) Forest edge mask generated")
     
     return forest_edge_mask
 
-def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, debug: bool = False) -> np.ndarray:
+def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, debug: bool = False, use_cache: bool = False) -> np.ndarray:
     """
     Generate a water access mask from water and coast masks, highlighting all areas with water access.
 
@@ -273,6 +354,8 @@ def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, d
         Binary mask indicating coastal areas.
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached mask if available, by default False
 
     Returns
     -------
@@ -283,16 +366,26 @@ def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, d
         raise ValueError("Water mask must be binary.")
     if not hf.check_binary(coast_mask):
         raise ValueError("Coast mask must be binary.")
+    
+    global water_access_mask_cache
+    if use_cache and water_access_mask_cache is not None:
+        if debug:
+            hf.paste_debugging("(Water access mask generation) Using cached water access mask, this will use potentially outdated data!")
+
+        return water_access_mask_cache
 
     # Combine water and coast masks, for all areas with water access
     water_access_mask = np.logical_or(water_mask == 1, coast_mask == 1).astype(np.uint8)
+
+    # Cache water access mask
+    water_access_mask_cache = water_access_mask
 
     if debug:
         hf.paste_debugging("(Water access mask generation) Water access mask generated")
     
     return water_access_mask
 
-def generate_all_masks(img_path: str, debug: bool = False) -> tuple[np.ndarray]:
+def generate_all_masks(img_path: str, debug: bool = False, use_cache: bool = False) -> tuple[np.ndarray]:
     """
     Generate all masks from a given image path.
 
@@ -302,6 +395,8 @@ def generate_all_masks(img_path: str, debug: bool = False) -> tuple[np.ndarray]:
         Path to the image file
     debug : bool, optional
         Print debug messages if True, by default False
+    use_cache : bool, optional
+        Use cached masks if available, by default False
 
     Returns
     -------
@@ -309,13 +404,13 @@ def generate_all_masks(img_path: str, debug: bool = False) -> tuple[np.ndarray]:
         Tuple containing all generated masks in the following order:
         tree_mask, water_mask, zero_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask
     """
-    tree_mask = hf.binary_mask(generate_tree_mask(img_path=img_path, debug=debug))
+    tree_mask = hf.binary_mask(generate_tree_mask(img_path=img_path, debug=debug, use_cache=use_cache))
 
     img = cv2.imread(img_path)
 
-    water_mask = hf.binary_mask(generate_water_mask(img=img, debug=debug))
+    water_mask = hf.binary_mask(generate_water_mask(img=img, debug=debug, use_cache=use_cache))
 
-    zero_mask = generate_free_mask(tree_mask, water_mask, debug=debug)
+    zero_mask = generate_free_mask(tree_mask, water_mask, debug=debug, use_cache=use_cache)
 
     # Against fully by one mask enclosed zones, specifically artifacts from tree detection
     hf.switch_enclaves(zero_mask, tree_mask, water_mask, enclosed_by_one=True, enclave_size_threshold=2500)
@@ -329,13 +424,13 @@ def generate_all_masks(img_path: str, debug: bool = False) -> tuple[np.ndarray]:
     if debug:
         hf.paste_debugging("(All masks generation) Remove enclave artifacts threshold=500 (False)")
 
-    coast_mask = generate_coast_mask(zero_mask, water_mask, debug=debug)
+    coast_mask = generate_coast_mask(zero_mask, water_mask, debug=debug, use_cache=use_cache)
 
-    inland_mask = generate_inland_mask(zero_mask, coast_mask, debug=debug)
+    inland_mask = generate_inland_mask(zero_mask, coast_mask, debug=debug, use_cache=use_cache)
 
-    forest_edge_mask = generate_forest_edge_mask(tree_mask, zero_mask, debug=debug)
+    forest_edge_mask = generate_forest_edge_mask(tree_mask, zero_mask, debug=debug, use_cache=use_cache)
 
-    water_access_mask = generate_water_access_mask(water_mask, coast_mask, debug=debug)
+    water_access_mask = generate_water_access_mask(water_mask, coast_mask, debug=debug, use_cache=use_cache)
 
     return (tree_mask, water_mask, zero_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask)
 
@@ -343,3 +438,6 @@ if __name__ == "__main__":
     image_input_path = "./mocking_examples/main2.png"
 
     result_tuple = generate_all_masks(image_input_path, debug=True)
+
+    generate_tree_mask(image_input_path, debug=True, use_cache=True)
+    generate_tree_mask(image_input_path, debug=True, use_cache=False)
