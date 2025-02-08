@@ -10,7 +10,8 @@ Separate scores are calculated for each factor, and then combined
 import json
 import numpy as np
 import helper_functions as hf
-from area_mapping import get_water_mask, get_tree_mask
+import classification as cl
+import cv2
 
 CONFIG = json.load(open("habitability_config.json", "r"))
 # Perfect ratio of water
@@ -72,12 +73,13 @@ def get_score(scores: list, weights: list = None) -> float:
 
 if __name__ == "__main__":
     image_input_path = "./mocking_examples/main2.png"
+    image = cv2.imread(image_input_path)
 
-    water_mask = get_water_mask(image_input_path)
+    water_mask = cl.generate_water_mask(image)
     water_score = get_water_score(water_mask)
     print(f"Water Score: {water_score}")
 
-    tree_mask = get_tree_mask(image_input_path)
+    tree_mask = cl.generate_tree_mask(image_input_path)
     tree_score = get_tree_score(tree_mask)
     print(f"Tree Score: {tree_score}")
 
