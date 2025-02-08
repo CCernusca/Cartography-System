@@ -79,7 +79,7 @@ def get_gabor_filter_mask(img, ksize=15, sigma=4.3, theta=0.2, lambd=9.8, gamma=
     return gabor_mask
 
 def get_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, water_source_min_size: int = 1000, coast_range: int = 100) -> np.ndarray:
-    coast_mask = hf.mask_range(water_mask, contour_min_size=water_source_min_size, range_size=coast_range)
+    coast_mask = hf.mask_range(water_mask, blob_min_size=water_source_min_size, range_size=coast_range)
     
     coast_mask = np.logical_and(zero_mask > 0, coast_mask > 0).astype(np.uint8)
     return coast_mask
@@ -92,7 +92,7 @@ def get_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray) -> np.ndarray
     return cv2.bitwise_and(zero_mask, cv2.bitwise_not(coast_mask))
 
 def get_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, contour_min_size: int = 500, range_size: int = 50) -> np.ndarray:
-    tree_range_mask = hf.mask_range(tree_mask, contour_min_size=contour_min_size, range_size=range_size)
+    tree_range_mask = hf.mask_range(tree_mask, blob_min_size=contour_min_size, range_size=range_size)
     forest_edge_mask = np.logical_and(tree_range_mask, zero_mask).astype(np.uint8)
     
     return forest_edge_mask

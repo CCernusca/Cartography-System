@@ -3,9 +3,11 @@ import json
 import cv2
 import networkx as nx
 from queue import PriorityQueue
-from time import gmtime, strftime
+from time import gmtime, strftime, time
 from scipy.spatial import KDTree
 from scipy.ndimage import binary_dilation
+
+last_debug_time: float = time()
 
 def __plot_overlap__(rect1, rect2, min_distance):
     x1, y1, w1, h1 = rect1
@@ -22,13 +24,13 @@ def get_contours(mask: np.ndarray) -> np.ndarray:
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours
 
-def mask_range(mask: np.ndarray, contour_min_size: int = 1000, range_size: int = 200) -> np.ndarray:
+def mask_range(mask: np.ndarray, blob_min_size: int = 1000, range_size: int = 200) -> np.ndarray:
     near_mask = np.zeros_like(mask) # new empty mask
     contours = get_contours(mask)
 
     # Add radius around contours to mask
     for cnt in contours:
-        if cv2.contourArea(cnt) >= contour_min_size:
+        if cv2.contourArea(cnt) >= blob_min_size:
             cv2.drawContours(near_mask, [cnt], -1, 1, thickness=range_size)  # Debug: Changed to 1 instead of 255
 
     return near_mask
@@ -414,7 +416,14 @@ def subtract_masks(mask_1: np.ndarray, mask_2: np.ndarray) -> np.ndarray:
     return result_mask
 
 def paste_debugging(message: str) -> None:
-    print(f"{strftime('%H:%M:%S', gmtime())} - {message}")
+    """Prints a message with the current time and the time elapsed since the last debug paste
+
+    Args:
+        message (str): The message to be printed
+    """
+    global last_debug_time
+    print(f"[{strftime('%H:%M:%S', gmtime())}] : Δt {round(time() - last_debug_time, 6)}s : {message}")
+    last_debug_time = time()
 
 def mask_percentage_difference(binary_mask, target_percentage):
     """
@@ -437,3 +446,72 @@ def mask_percentage_difference(binary_mask, target_percentage):
 
     difference = actual_filled_percentage - target_percentage
     return difference
+
+def gabor_filter(img, ksize=15, sigma=4.3, theta=0.2, lambd=9.8, gamma=0.2, psi=0.885) -> np.ndarray:
+    """
+    Apply a Gabor filter to an image, resulting in a flatness mask.
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image in BGR format.
+    ksize : int, optional
+        Size of the filter kernel, by default 15.
+    sigma : float, optional
+        Standard deviation of the Gaussian envelope, by default 4.3.
+    theta : float, optional
+        Orientation of the normal to the parallel stripes of the Gabor function, by default 0.2.
+    lambd : float, optional
+        Wavelength of the sinusoidal factor, by default 9.8.
+    gamma : float, optional
+        Spatial aspect ratio, by default 0.2.
+    psi : float, optional
+        Phase offset, by default 0.885.
+
+    Returns
+    -------
+    np.ndarray
+        Output image with the Gabor filter applied.
+    """
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Gabor kernel (filter)
+    gabor_kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, lambd, gamma, psi, ktype=cv2.CV_32F)
+
+    # Apply gabor filter to the image
+    gabor_mask = cv2.filter2D(gray_img, cv2.CV_8UC3, gabor_kernel)
+
+    return gabor_mask
+
+def check_binary(mask: np.ndarray) -> bool:
+    """Check if a given mask is a binary mask (i.e., contains only 0 and 1 values).
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Input mask.
+
+    Returns
+    -------
+    bool
+        True if the mask is a binary mask, False otherwise.
+    """
+    return (np.all(mask == 0) or np.all(mask == 1)) and mask.dtype == np.uint8
+
+def binary_mask(mask: np.ndarray, threshold: float = 127) -> np.ndarray:
+    """
+    Convert a given mask to a binary mask (i.e., a mask with only 0 and 1 values) by thresholding.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Input mask.
+    threshold : float, optional
+        Threshold value for binarization, by default 127.
+
+    Returns
+    -------
+    np.ndarray
+        Binary mask with the same shape as the input mask.
+    """
+    return (mask > threshold).astype(np.uint8)
