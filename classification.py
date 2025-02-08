@@ -5,6 +5,7 @@ Terrain region classification
 Classifies terrain regions into masks
 """
 
+import matplotlib.pyplot as plt
 import helper_functions as hf
 import detectree as dtr
 import numpy as np
@@ -437,7 +438,7 @@ def generate_all_masks(img_path: str, debug: bool = False, use_cache: bool = Fal
 if __name__ == "__main__":
     image_input_path = "./mocking_examples/main2.png"
 
-    result_tuple = generate_all_masks(image_input_path, debug=True)
+    tree_mask, water_mask, free_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask = generate_all_masks(image_input_path, debug=True)
 
     generate_tree_mask(image_input_path, debug=True, use_cache=True)
     generate_tree_mask(image_input_path, debug=True, use_cache=False)

@@ -84,7 +84,7 @@ def get_buildings(sort_priority: bool = True) -> list:
 def place_buildings(blueprints: list, masks: dict[str, np.ndarray]) -> tuple[list, np.ndarray]:
     # Place buildings
     placed_buildings = []
-    building_mask = np.zeros_like(masks["zero"])
+    building_mask = np.zeros_like(masks["free"])
     for blueprint in blueprints:
         for _ in range(blueprint["amount"]):
             nametag = blueprint["name"]
@@ -217,7 +217,7 @@ def generate_path_tree(buildings: list, max_length: int|None = None) -> list[tup
 
 def astar(start: tuple, goal: tuple, masks: dict[str, np.ndarray], cost_multipliers: dict[str, float]) -> list[tuple]|None:
     start, goal = tuple(start), tuple(goal)
-    rows, cols = masks["zero"].shape
+    rows, cols = masks["free"].shape
 
     # Precompute cost map
     cost_map = np.zeros((rows, cols))
@@ -496,9 +496,10 @@ def check_binary(mask: np.ndarray) -> bool:
     bool
         True if the mask is a binary mask, False otherwise.
     """
-    return (np.all(mask == 0) or np.all(mask == 1)) and mask.dtype == np.uint8
+    unique_values = np.unique(mask)
+    return set(unique_values).issubset({0, 1}) and mask.dtype == np.uint8
 
-def binary_mask(mask: np.ndarray, threshold: float = 127) -> np.ndarray:
+def binary_mask(mask: np.ndarray, threshold: float = 0) -> np.ndarray:
     """
     Convert a given mask to a binary mask (i.e., a mask with only 0 and 1 values) by thresholding.
 
@@ -507,7 +508,7 @@ def binary_mask(mask: np.ndarray, threshold: float = 127) -> np.ndarray:
     mask : np.ndarray
         Input mask.
     threshold : float, optional
-        Threshold value for binarization, by default 127.
+        Threshold value for binarization, by default 0.
 
     Returns
     -------

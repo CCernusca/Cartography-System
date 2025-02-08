@@ -122,17 +122,17 @@ def mask_deployment(tree_mask: np.ndarray, water_mask: np.ndarray, costs: tuple[
     hf.paste_debugging("blueprint received")  #* Debugging (Time Paste)
     buildings, building_mask = hf.place_buildings(blueprints, 
                                     masks={
-                                        "zero": zero_mask,
+                                        "free": zero_mask,
                                         "coast": coast_mask, 
                                         "inland": inland_mask, 
                                         "forest_edge": forest_edge_mask, 
-                                        "water_and_coast": water_and_coast_mask}
+                                        "water_access": water_and_coast_mask}
                                    )
     hf.paste_debugging("buildings placed")  #* Debugging (Time Paste)
     
     # Generate List of paths
     paths_points, bridge_points = hf.generate_path_points(buildings, masks_and_cost_multipliers={
-        "zero": (zero_mask, costs[0]), 
+        "free": (zero_mask, costs[0]), 
         "trees": (tree_mask, costs[1]), 
         "water": (water_mask, costs[2]), 
         "buildings": (building_mask, costs[3]),  # Buildings must be avoided at all costs
