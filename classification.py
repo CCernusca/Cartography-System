@@ -22,6 +22,8 @@ def generate_tree_mask(img_path: str, expansion_thickness: int = 2, min_area: in
         Thickness of the contours to draw around the tree mask, by default 2
     min_area : int, optional
         Minimum area of a contour to be considered a tree, by default 10
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -71,6 +73,8 @@ def generate_water_mask(img: cv2.typing.MatLike, lower_water_color: np.ndarray[i
         Size of the morphologyEx kernel for closing small gaps in the water layer, by default 12
     radius : float, optional
         Radius of the expansion of the water mask, by default 3
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -126,6 +130,8 @@ def generate_free_mask(tree_mask: np.ndarray, water_mask: np.ndarray, debug: boo
         Tree mask as a numpy array
     water_mask : np.ndarray
         Water mask as a numpy array
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -162,6 +168,8 @@ def generate_coast_mask(zero_mask: np.ndarray, water_mask: np.ndarray, blob_min_
         Minimum size of a water source to be considered a water body or surface. Defaults to 1000. A blob is a region of connected pixels.
     coast_range : int
         Range in pixels to consider as coastline. Defaults to 100.
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -194,6 +202,8 @@ def generate_inland_mask(zero_mask: np.ndarray, coast_mask: np.ndarray, debug: b
         Free mask as a numpy array
     coast_mask : np.ndarray
         Coast mask as a numpy array
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -227,6 +237,8 @@ def generate_forest_edge_mask(tree_mask: np.ndarray, zero_mask: np.ndarray, blob
         Minimum size of a tree surface to be considered for edge detection. Defaults to 500.
     range_size : int, optional
         Range in pixels to consider as the forest edge. Defaults to 50.
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -259,6 +271,8 @@ def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, d
         Binary mask indicating water areas.
     coast_mask : np.ndarray
         Binary mask indicating coastal areas.
+    debug : bool, optional
+        Print debug messages if True, by default False
 
     Returns
     -------
@@ -279,6 +293,22 @@ def generate_water_access_mask(water_mask: np.ndarray, coast_mask: np.ndarray, d
     return water_access_mask
 
 def generate_all_masks(img_path: str, debug: bool = False) -> tuple[np.ndarray]:
+    """
+    Generate all masks from a given image path.
+
+    Parameters
+    ----------
+    img_path : str
+        Path to the image file
+    debug : bool, optional
+        Print debug messages if True, by default False
+
+    Returns
+    -------
+    tuple[np.ndarray]
+        Tuple containing all generated masks in the following order:
+        tree_mask, water_mask, zero_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask
+    """
     tree_mask = hf.binary_mask(generate_tree_mask(img_path=img_path, debug=debug))
 
     img = cv2.imread(img_path)
