@@ -3,35 +3,35 @@
         "name": "Town Hall", 
         "size": [30, 30], 
         "priority": 5, 
-        "location": "zero", 
+        "location": "free", 
         "amount": 1
     }, 
     {
         "name": "HEP-Plant", 
         "size": [20, 25], 
         "priority": 2, 
-        "location": "water_and_coast", 
+        "location": "water_access", 
         "amount": 2
     }, 
     {
         "name": "Residential Building", 
         "size": [15, 20], 
         "priority": 2, 
-        "location": "zero", 
+        "location": "free", 
         "amount": 2
     }, 
     {
         "name": "Residential Building", 
         "size": [30, 30], 
         "priority": 3, 
-        "location": "zero", 
+        "location": "free", 
         "amount": 1
     }, 
     {
         "name": "Workshop", 
         "size": [5, 10], 
         "priority": 1, 
-        "location": "zero", 
+        "location": "free", 
         "amount": 2
     }, 
     {
@@ -59,7 +59,7 @@
         "name": "Factory", 
         "size": [30, 40], 
         "priority": 2, 
-        "location": "zero", 
+        "location": "free", 
         "amount": 1
     }
 ]

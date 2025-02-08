@@ -515,3 +515,20 @@ def binary_mask(mask: np.ndarray, threshold: float = 127) -> np.ndarray:
         Binary mask with the same shape as the input mask.
     """
     return (mask > threshold).astype(np.uint8)
+
+def centroid_sorted(mask: np.ndarray) -> np.ndarray:
+    """
+    Sort the coordinates in a given mask by their Euclidean distance from the centroid of the mask.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Input mask.
+
+    Returns
+    -------
+    np.ndarray
+        Sorted coordinates of the mask (i.e. the coordinates of the pixels in the mask, sorted by their Euclidean distance from the centroid of the mask).
+    """
+    centroid = get_mask_centroid(mask)
+    return sorted(np.argwhere(mask > 0), key=lambda x: ((x[0] - centroid[0]) ** 2 + (x[1] - centroid[1]) ** 2) ** 0.5)

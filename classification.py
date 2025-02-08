@@ -410,29 +410,29 @@ def generate_all_masks(img_path: str, debug: bool = False, use_cache: bool = Fal
 
     water_mask = hf.binary_mask(generate_water_mask(img=img, debug=debug, use_cache=use_cache))
 
-    zero_mask = generate_free_mask(tree_mask, water_mask, debug=debug, use_cache=use_cache)
+    free_mask = generate_free_mask(tree_mask, water_mask, debug=debug, use_cache=use_cache)
 
     # Against fully by one mask enclosed zones, specifically artifacts from tree detection
-    hf.switch_enclaves(zero_mask, tree_mask, water_mask, enclosed_by_one=True, enclave_size_threshold=2500)
+    hf.switch_enclaves(free_mask, tree_mask, water_mask, enclosed_by_one=True, enclave_size_threshold=2500)
 
     if debug:
         hf.paste_debugging("(All masks generation) Remove enclave artifacts threshold=2500 (True)")
 
     # Against all artifacts, much smaller threshold as to only get rid of small artifacts and not actually useful areas
-    hf.switch_enclaves(zero_mask, tree_mask, water_mask, enclosed_by_one=False, enclave_size_threshold=500)
+    hf.switch_enclaves(free_mask, tree_mask, water_mask, enclosed_by_one=False, enclave_size_threshold=500)
 
     if debug:
         hf.paste_debugging("(All masks generation) Remove enclave artifacts threshold=500 (False)")
 
-    coast_mask = generate_coast_mask(zero_mask, water_mask, debug=debug, use_cache=use_cache)
+    coast_mask = generate_coast_mask(free_mask, water_mask, debug=debug, use_cache=use_cache)
 
-    inland_mask = generate_inland_mask(zero_mask, coast_mask, debug=debug, use_cache=use_cache)
+    inland_mask = generate_inland_mask(free_mask, coast_mask, debug=debug, use_cache=use_cache)
 
-    forest_edge_mask = generate_forest_edge_mask(tree_mask, zero_mask, debug=debug, use_cache=use_cache)
+    forest_edge_mask = generate_forest_edge_mask(tree_mask, free_mask, debug=debug, use_cache=use_cache)
 
     water_access_mask = generate_water_access_mask(water_mask, coast_mask, debug=debug, use_cache=use_cache)
 
-    return (tree_mask, water_mask, zero_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask)
+    return (tree_mask, water_mask, free_mask, coast_mask, inland_mask, forest_edge_mask, water_access_mask)
 
 if __name__ == "__main__":
     image_input_path = "./mocking_examples/main2.png"
