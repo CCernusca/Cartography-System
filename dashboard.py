@@ -10,6 +10,7 @@ from matplotlib.figure import Figure
 import matplotlib.image as mpimg
 from tkinter import ttk
 from tkinter import colorchooser
+import time
 
 def on_hover(event):
     # Get the index of the item under the mouse cursor
@@ -478,6 +479,19 @@ ax.title.set_color(axes_colors)
 canvas = FigureCanvasTkAgg(fig, master=root)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+def save_visualization():
+    overlay_img_path = os.path.join(os.path.expanduser("~"), "Downloads", f"visualization_{time.time()}.png")
+    ax.set_axis_off()
+    canvas.figure.savefig(overlay_img_path, bbox_inches='tight', pad_inches=0)
+    print(f"Overlay saved to {overlay_img_path}")
+
+# Save Button
+tk.Button(
+    sidebar_right, 
+    text="Save Visualization", 
+    command=save_visualization
+).pack(side=tk.TOP, pady=25)
 
 # Initialize plot
 update_plot()
